@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="UTF-8">
+		<title>通讯录管理</title>
+		<link rel="stylesheet" href="css/index.css">
+		<script src="js/vue.js"></script>
+		<script src="js/index.js"></script>
+		<script src="js/axio.min.js"></script>
+	</head>
+	<body>
+		<div id="app" style="padding: 20px; background-color: whitesmoke;">
+			<h3>通讯录管理</h3>
+			<!-- 搜索框和操作按钮 -->
+			<el-row :gutter="20" style="margin-bottom: 20px;">
+				<el-col :span="6">
+					<el-input v-model="searchQuery" placeholder="用户名" clearable></el-input>
+				</el-col>
+				<el-col :span="6">
+					<el-button type="primary" @click="searchContacts">搜索</el-button>
+					<el-button type="success" @click="openDialog('add')">添加</el-button>
+				</el-col>
+			</el-row>
+
+			<!-- 数据表格 -->
+			<el-table :data="contacts" style="width: 100%;" border>
+				<el-table-column prop="id" label="ID" width="80" align="center"></el-table-column>
+				<el-table-column prop="userName" label="用户名" align="center"></el-table-column>
+				<el-table-column prop="department" label="部门" align="center"></el-table-column>
+				<el-table-column prop="email" label="邮箱" align="center"></el-table-column>
+				<el-table-column prop="phonenumber" label="手机号" align="center"></el-table-column>
+				<el-table-column prop="status" label="状态" align="center">
+					<template slot-scope="scope">
+						<el-tag :type="scope.row.status === '启用' ? 'success' : 'info'">{{ scope.row.status }}</el-tag>
+					</template>
+				</el-table-column>
+				<el-table-column prop="createTime" label="创建时间" align="center"></el-table-column>
+				<el-table-column prop="updateTime" label="修改时间" align="center"></el-table-column>
+				<el-table-column label="操作" align="center" width="150">
+					<template slot-scope="scope">
+						<el-button size="mini" type="danger"
+							@click="toggleStatus(scope.row)">删除</el-button>
+						<el-button size="mini" type="primary" @click="openDialog('edit', scope.row)">修改</el-button>
+					</template>
+				</el-table-column>
+			</el-table>
+
+			<!-- 分页 -->
+			<el-pagination style="margin-top: 20px; text-align: right;" background layout="prev, pager, next, total"
+				:total="contacts.length" :page-size="10" :current-page.sync="currentPage">
+			</el-pagination>
+
+			<!-- 弹出框 -->
+			<el-dialog :title="dialogTitle" :visible.sync="dialogVisible">
+				<el-form :model="form" ref="form">
+					<el-form-item label="用户名">
+						<el-input v-model="form.userName"></el-input>
+					</el-form-item>
+					<el-form-item label="部门">
+						<el-input v-model="form.department"></el-input>
+					</el-form-item>
+					<el-form-item label="邮箱">
+						<el-input v-model="form.email"></el-input>
+					</el-form-item>
+					<el-form-item label="手机号">
+						<el-input v-model="form.phonenumber"></el-input>
+					</el-form-item>
+					<el-form-item label="状态">
+						<el-select v-model="form.status">
+							<el-option label="启用" value="启用"></el-option>
+							<el-option label="禁用" value="禁用"></el-option>
+						</el-select>
+					</el-form-item>
+				</el-form>
+				<div slot="footer" class="dialog-footer">
+					<el-button @click="dialogVisible = false">取消</el-button>
+					<el-button type="primary" @click="saveContact">保存</el-button>
+				</div>
+			</el-dialog>
+		</div>
+
+		<script>
+			new Vue({
+				el: '#app',
+				data() {
+					return {
+						searchQuery: '', // 搜索关键词
+						currentPage: 1, // 当前分页
+						contacts: [ // 模拟数据
+							{
+								id: 1,
+								userName: 'wangke',
+								department: 'dept-b',
+								email: 'wangke@t.cn',
+								phonenumber: '18678900987',
+								status: '启用',
+								createTime: '2017/7/18 上午11:40:53',
+								updateTime: '2018/4/22 下午8:48:52'
+							},
+							{
+								id: 2,
+								userName: 'zhangli',
+								department: 'dept-b',
+								email: 'zhangli@t.cn',
+								phonenumber: '136789009876',
+								status: '禁用',
+								createTime: '2017/7/18 上午10:01:51',
+								updateTime: '2018/4/22 下午8:49:19'
+							},
+							{
+								id: 3,
+								userName: 'admin',
+								department: 'dept-b',
+								email: 'admin@t.cn',
+								phonenumber: '13624356789',
+								status: '启用',
+								createTime: '1970/1/1 上午8:00:00',
+								updateTime: '2018/4/22 下午8:53:48'
+							},
+
+						],
+						dialogVisible: false,
+						dialogTitle: '',
+						form: {
+							id: '',
+							userName: '',
+							department: '',
+							email: '',
+							phonenumber: '',
+							status: '启用',
+						},
+					};
+				},
+				created() {
+					this.searchContacts();
+				},
+				methods: {
+
+					searchContacts() {
+						let params = {
+							pageNum: this.currentPage,
+							pageSize: 10,
+							searchQuery: this.searchQuery
+						};
+						axios.get('http://localhost:8080/contacts/list', {
+							params
+						}).then(response => {
+							this.contacts = response.data.records;
+							this.currentPage = response.data.current
+						});
+					},
+					openDialog(type, row = {}) {
+						this.dialogTitle = type === 'add' ? '添加用户' : '编辑用户';
+						this.form = type === 'add' ? {
+							id: '',
+							userName: '',
+							department: '',
+							email: '',
+							phonenumber: '',
+							status: '启用'
+						} : {
+							...row
+						};
+						this.dialogVisible = true;
+					},
+					saveContact() {
+						if (this.form.id) {
+							axios.put(`http://localhost:8080/contacts`, this.form).then(() => {
+								this.searchContacts();
+							});
+						} else {
+							axios.post('http://localhost:8080/contacts/', this.form).then(() => {
+								this.searchContacts();
+							});
+						}
+						this.dialogVisible = false;
+					},
+					toggleStatus(row) {
+						axios.delete(`http://localhost:8080/contacts/${row.id}`).then(() => {
+							this.searchContacts();
+						});
+					}
+				},
+			});
+		</script>
+	</body>
+</html>
